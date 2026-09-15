@@ -125,4 +125,16 @@ export class ChatComponent {
       this.loading = false;
     }
   }
+
+  handleEnter(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+
+    if (keyboardEvent.shiftKey) {
+      return;
+    }
+
+    keyboardEvent.preventDefault();
+    void this.send();
+  }
+
 }

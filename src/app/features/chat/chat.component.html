@@ -148,9 +148,7 @@
 
       [disabled]="loading"
 
-      (keydown.enter)="$event.shiftKey
-        ? null
-        : ($event.preventDefault(), send())"
+      (keydown.enter)="handleEnter($event)"
     ></textarea>
 
 

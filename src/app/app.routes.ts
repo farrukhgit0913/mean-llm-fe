@@ -18,6 +18,4 @@ export const routes: Routes = [
     redirectTo: ''
   }
 
-];import { Routes } from '@angular/router';
-
-export const routes: Routes = [];
+];

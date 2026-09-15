@@ -8,9 +8,9 @@ node_modules/
 !.env.example
 
 # Angular
-frontend/.angular/
-frontend/dist/
-frontend/coverage/
+.angular/
+dist/
+coverage/
 
 # Node / TypeScript
 server/dist/
