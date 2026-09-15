@@ -1,4 +1,5 @@
 import {
+  ChangeDetectorRef,
   Component,
   inject
 } from '@angular/core';
@@ -19,7 +20,9 @@ import {
   ChatSource
 } from '../../core/models/chat.models';
 
+
 interface Message {
+
   role:
     | 'user'
     | 'assistant';
@@ -27,7 +30,9 @@ interface Message {
   content: string;
 
   sources?: ChatSource[];
+
 }
+
 
 @Component({
   selector: 'app-chat',
@@ -50,16 +55,22 @@ export class ChatComponent {
   private readonly chatService =
     inject(ChatService);
 
+  private readonly cdr =
+    inject(ChangeDetectorRef);
+
+
   message = '';
 
   loading = false;
 
   messages: Message[] = [];
 
+
   async send(): Promise<void> {
 
     const question =
       this.message.trim();
+
 
     if (
       !question ||
@@ -68,27 +79,46 @@ export class ChatComponent {
       return;
     }
 
+
+    console.log(
+      'USER QUESTION:',
+      question
+    );
+
+
     // Add user message
-    this.messages.push({
-      role: 'user',
-      content: question
-    });
+    this.messages = [
+      ...this.messages,
+      {
+        role: 'user',
+        content: question
+      }
+    ];
+
 
     // Clear input
     this.message = '';
 
-    // Create empty assistant message
-    this.messages.push({
+
+    // Create assistant message
+    const assistantMessage: Message = {
       role: 'assistant',
       content: ''
-    });
+    };
 
-    const assistant =
-      this.messages[
-        this.messages.length - 1
-      ];
+
+    this.messages = [
+      ...this.messages,
+      assistantMessage
+    ];
+
 
     this.loading = true;
+
+
+    // Immediately update UI
+    this.cdr.detectChanges();
+
 
     try {
 
@@ -96,45 +126,124 @@ export class ChatComponent {
 
         question,
 
-        // Every streamed token
-        token => {
 
-          assistant.content += token;
+        // =========================
+        // TOKEN
+        // =========================
+        (token: string) => {
+
+          console.log(
+            'TOKEN FOR UI:',
+            token
+          );
+
+
+          assistantMessage.content +=
+            token;
+
+
+          console.log(
+            'CURRENT CONTENT:',
+            assistantMessage.content
+          );
+
+
+          // Update array
+          this.messages = [
+            ...this.messages
+          ];
+
+
+          // FORCE ANGULAR UI UPDATE
+          this.cdr.detectChanges();
+
         },
 
-        // Sources returned after generation
-        sources => {
 
-          assistant.sources =
+        // =========================
+        // SOURCES
+        // =========================
+        (sources: ChatSource[]) => {
+
+          console.log(
+            'SOURCES FOR UI:',
+            sources
+          );
+
+
+          assistantMessage.sources =
             sources;
+
+
+          this.messages = [
+            ...this.messages
+          ];
+
+
+          // FORCE ANGULAR UI UPDATE
+          this.cdr.detectChanges();
+
         }
+
       );
 
     } catch (error) {
 
       console.error(
-        'Chat error:',
+        'CHAT ERROR:',
         error
       );
 
-      assistant.content =
-        'Sorry, something went wrong.';
+
+      assistantMessage.content =
+        'Sorry, something went wrong while processing your request.';
+
+
+      this.messages = [
+        ...this.messages
+      ];
+
+
+      this.cdr.detectChanges();
 
     } finally {
 
       this.loading = false;
+
+
+      this.messages = [
+        ...this.messages
+      ];
+
+
+      this.cdr.detectChanges();
+
     }
+
   }
 
-  handleEnter(event: Event): void {
-    const keyboardEvent = event as KeyboardEvent;
 
-    if (keyboardEvent.shiftKey) {
+  handleEnter(
+    event: Event
+  ): void {
+
+    const keyboardEvent =
+      event as KeyboardEvent;
+
+
+    // Shift + Enter = new line
+    if (
+      keyboardEvent.shiftKey
+    ) {
       return;
     }
 
-    keyboardEvent.preventDefault();
+
+    event.preventDefault();
+
+
     void this.send();
+
   }
 
 }
