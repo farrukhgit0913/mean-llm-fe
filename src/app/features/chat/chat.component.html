@@ -1,21 +1,18 @@
 <div class="chat">
 
+
   <!-- ============================================================
        HEADER
        ============================================================ -->
 
   <header class="chat-header">
 
-    <div>
+    <h1>
+      AI Assistant
+    </h1>
 
-      <h1>
-        AI Assistant
-      </h1>
-
-      <p>
-        MEAN + LLM (Ollama) + RAG
-      </p>
-
+    <div class="chat-subtitle">
+      (MEAN + LLM (Ollama) + RAG)
     </div>
 
   </header>
@@ -25,13 +22,19 @@
        MESSAGES
        ============================================================ -->
 
-  <main class="messages">
+  <main
+    class="messages"
+    #messagesContainer
+  >
+
 
     <!-- ==========================================================
          EMPTY STATE
          ========================================================== -->
 
-    @if (messages.length === 0) {
+    @if (
+      messages.length === 0
+    ) {
 
       <div class="empty-state">
 
@@ -59,8 +62,14 @@
 
       <div
         class="message"
-        [class.user]="msg.role === 'user'"
-        [class.assistant]="msg.role === 'assistant'"
+
+        [class.user]="
+          msg.role === 'user'
+        "
+
+        [class.assistant]="
+          msg.role === 'assistant'
+        "
       >
 
 
@@ -70,7 +79,9 @@
 
         <div class="role">
 
-          @if (msg.role === 'user') {
+          @if (
+            msg.role === 'user'
+          ) {
 
             You
 
@@ -89,11 +100,14 @@
 
         <div class="content">
 
+
           <!-- ----------------------------------------------------
                ANSWER TEXT
                ---------------------------------------------------- -->
 
-          @if (msg.content) {
+          @if (
+            msg.content
+          ) {
 
             <span class="message-text">
               {{ msg.content }}
@@ -161,7 +175,9 @@
               </span>
 
 
-              @if (msg.processing) {
+              @if (
+                msg.processing
+              ) {
 
                 <span class="live">
                   LIVE
@@ -289,9 +305,9 @@
               <div class="source">
 
 
-                <!-- ----------------------------------------------
+                <!-- ------------------------------------------------
                      SOURCE HEADER
-                     ---------------------------------------------- -->
+                     ------------------------------------------------ -->
 
                 <div class="source-header">
 
@@ -319,9 +335,9 @@
                 </div>
 
 
-                <!-- ----------------------------------------------
+                <!-- ------------------------------------------------
                      SOURCE CONTENT
-                     ---------------------------------------------- -->
+                     ------------------------------------------------ -->
 
                 <p>
                   {{ source.content }}
@@ -357,6 +373,7 @@
          ========================================================== -->
 
     <textarea
+
       name="message"
 
       [(ngModel)]="message"
@@ -368,6 +385,7 @@
       [disabled]="loading"
 
       (keydown.enter)="handleEnter($event)"
+
     ></textarea>
 
 
@@ -376,15 +394,19 @@
          ========================================================== -->
 
     <button
+
       type="submit"
 
       [disabled]="
         loading ||
         !message.trim()
       "
+
     >
 
-      @if (loading) {
+      @if (
+        loading
+      ) {
 
         Thinking...
 

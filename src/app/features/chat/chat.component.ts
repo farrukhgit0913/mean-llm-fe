@@ -1,6 +1,8 @@
 import {
   ChangeDetectorRef,
   Component,
+  ElementRef,
+  ViewChild,
   inject
 } from '@angular/core';
 
@@ -53,6 +55,7 @@ interface Message {
 
 
 @Component({
+
   selector: 'app-chat',
 
   standalone: true,
@@ -67,8 +70,27 @@ interface Message {
 
   styleUrl:
     './chat.component.css'
+
 })
 export class ChatComponent {
+
+
+  /*
+   * ============================================================
+   * VIEW
+   * ============================================================
+   */
+
+  @ViewChild('messagesContainer')
+  private messagesContainer?:
+    ElementRef<HTMLElement>;
+
+
+  /*
+   * ============================================================
+   * SERVICES
+   * ============================================================
+   */
 
   private readonly chatService =
     inject(ChatService);
@@ -76,6 +98,12 @@ export class ChatComponent {
   private readonly cdr =
     inject(ChangeDetectorRef);
 
+
+  /*
+   * ============================================================
+   * STATE
+   * ============================================================
+   */
 
   message = '';
 
@@ -86,7 +114,7 @@ export class ChatComponent {
 
   /*
    * ============================================================
-   * SEND
+   * SEND MESSAGE
    * ============================================================
    */
 
@@ -95,6 +123,12 @@ export class ChatComponent {
     const question =
       this.message.trim();
 
+
+    /*
+     * ----------------------------------------------------------
+     * Prevent empty / duplicate requests
+     * ----------------------------------------------------------
+     */
 
     if (
       !question ||
@@ -108,7 +142,7 @@ export class ChatComponent {
 
     /*
      * ----------------------------------------------------------
-     * USER MESSAGE
+     * Add USER message
      * ----------------------------------------------------------
      */
 
@@ -126,7 +160,7 @@ export class ChatComponent {
 
     /*
      * ----------------------------------------------------------
-     * ASSISTANT MESSAGE
+     * RAG pipeline
      * ----------------------------------------------------------
      */
 
@@ -176,6 +210,12 @@ export class ChatComponent {
       ];
 
 
+    /*
+     * ----------------------------------------------------------
+     * Add ASSISTANT placeholder
+     * ----------------------------------------------------------
+     */
+
     const assistant:
       Message = {
 
@@ -207,9 +247,7 @@ export class ChatComponent {
 
     /*
      * ----------------------------------------------------------
-     * IMPORTANT:
-     *
-     * Keep the assistant INDEX.
+     * Remember assistant position.
      * ----------------------------------------------------------
      */
 
@@ -217,12 +255,22 @@ export class ChatComponent {
       this.messages.length - 1;
 
 
+    /*
+     * Clear input
+     */
+
     this.message = '';
 
     this.loading = true;
 
 
+    /*
+     * Render immediately.
+     */
+
     this.cdr.detectChanges();
+
+    this.scrollToBottom();
 
 
     try {
@@ -234,7 +282,7 @@ export class ChatComponent {
 
         /*
          * ======================================================
-         * TOKEN
+         * TOKEN CALLBACK
          * ======================================================
          */
 
@@ -273,6 +321,10 @@ export class ChatComponent {
             };
 
 
+          /*
+           * Replace assistant message immutably.
+           */
+
           this.messages = [
 
             ...this.messages.slice(
@@ -289,14 +341,25 @@ export class ChatComponent {
           ];
 
 
+          /*
+           * Force Angular to render token.
+           */
+
           this.cdr.detectChanges();
+
+
+          /*
+           * Keep latest token visible.
+           */
+
+          this.scrollToBottom();
 
         },
 
 
         /*
          * ======================================================
-         * SOURCES
+         * SOURCES CALLBACK
          * ======================================================
          */
 
@@ -349,12 +412,14 @@ export class ChatComponent {
 
           this.cdr.detectChanges();
 
+          this.scrollToBottom();
+
         },
 
 
         /*
          * ======================================================
-         * STATUS
+         * STATUS CALLBACK
          * ======================================================
          */
 
@@ -379,6 +444,10 @@ export class ChatComponent {
           }
 
 
+          /*
+           * Clone pipeline.
+           */
+
           const updatedPipeline:
             PipelineStep[] =
               current.pipeline
@@ -392,11 +461,19 @@ export class ChatComponent {
                 : [];
 
 
+          /*
+           * Update pipeline state.
+           */
+
           this.updatePipeline(
             updatedPipeline,
             status
           );
 
+
+          /*
+           * Update message.
+           */
 
           const updated:
             Message = {
@@ -429,6 +506,8 @@ export class ChatComponent {
 
           this.cdr.detectChanges();
 
+          this.scrollToBottom();
+
         }
 
       );
@@ -436,7 +515,7 @@ export class ChatComponent {
 
       /*
        * ======================================================
-       * COMPLETED
+       * STREAM COMPLETED
        * ======================================================
        */
 
@@ -502,6 +581,8 @@ export class ChatComponent {
 
 
       this.cdr.detectChanges();
+
+      this.scrollToBottom();
 
 
     } catch (error) {
@@ -579,11 +660,15 @@ export class ChatComponent {
 
       this.cdr.detectChanges();
 
+      this.scrollToBottom();
+
     } finally {
 
       this.loading = false;
 
       this.cdr.detectChanges();
+
+      this.scrollToBottom();
 
     }
 
@@ -592,7 +677,43 @@ export class ChatComponent {
 
   /*
    * ============================================================
-   * PIPELINE
+   * AUTO SCROLL
+   * ============================================================
+   */
+
+  private scrollToBottom(): void {
+
+    requestAnimationFrame(() => {
+
+      const element =
+        this.messagesContainer?.nativeElement;
+
+
+      if (!element) {
+
+        return;
+
+      }
+
+
+      element.scrollTo({
+
+        top:
+          element.scrollHeight,
+
+        behavior:
+          'auto'
+
+      });
+
+    });
+
+  }
+
+
+  /*
+   * ============================================================
+   * UPDATE RAG PIPELINE
    * ============================================================
    */
 
@@ -606,7 +727,9 @@ export class ChatComponent {
 
 
     /*
+     * ----------------------------------------------------------
      * Create embedding
+     * ----------------------------------------------------------
      */
 
     if (
@@ -626,7 +749,9 @@ export class ChatComponent {
 
 
     /*
+     * ----------------------------------------------------------
      * Search MongoDB
+     * ----------------------------------------------------------
      */
 
     if (
@@ -651,7 +776,9 @@ export class ChatComponent {
 
 
     /*
-     * Relevant documents
+     * ----------------------------------------------------------
+     * Relevant documents found
+     * ----------------------------------------------------------
      */
 
     if (
@@ -679,7 +806,9 @@ export class ChatComponent {
 
 
     /*
+     * ----------------------------------------------------------
      * No relevant knowledge
+     * ----------------------------------------------------------
      */
 
     if (
@@ -704,7 +833,9 @@ export class ChatComponent {
 
 
     /*
+     * ----------------------------------------------------------
      * General knowledge
+     * ----------------------------------------------------------
      */
 
     if (
@@ -729,7 +860,9 @@ export class ChatComponent {
 
 
     /*
+     * ----------------------------------------------------------
      * Context added
+     * ----------------------------------------------------------
      */
 
     if (
@@ -754,7 +887,9 @@ export class ChatComponent {
 
 
     /*
-     * Sending request
+     * ----------------------------------------------------------
+     * Sending request to Llama
+     * ----------------------------------------------------------
      */
 
     if (
@@ -779,7 +914,9 @@ export class ChatComponent {
 
 
     /*
+     * ----------------------------------------------------------
      * Generating answer
+     * ----------------------------------------------------------
      */
 
     if (
@@ -804,7 +941,9 @@ export class ChatComponent {
 
 
     /*
+     * ----------------------------------------------------------
      * Completed
+     * ----------------------------------------------------------
      */
 
     if (
@@ -831,7 +970,7 @@ export class ChatComponent {
 
   /*
    * ============================================================
-   * SET ACTIVE
+   * SET ACTIVE PIPELINE STEP
    * ============================================================
    */
 
@@ -879,7 +1018,7 @@ export class ChatComponent {
 
   /*
    * ============================================================
-   * COMPLETE THROUGH
+   * COMPLETE PIPELINE THROUGH STEP
    * ============================================================
    */
 
@@ -911,7 +1050,7 @@ export class ChatComponent {
 
   /*
    * ============================================================
-   * ENTER
+   * ENTER KEY
    * ============================================================
    */
 
@@ -923,6 +1062,10 @@ export class ChatComponent {
       event as KeyboardEvent;
 
 
+    /*
+     * Shift + Enter = new line
+     */
+
     if (
       keyboardEvent.shiftKey
     ) {
@@ -931,6 +1074,10 @@ export class ChatComponent {
 
     }
 
+
+    /*
+     * Enter = send
+     */
 
     event.preventDefault();
 
