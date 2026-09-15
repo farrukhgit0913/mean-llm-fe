@@ -1,19 +1,35 @@
 <div class="chat">
 
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+
   <header class="chat-header">
 
-    <h1>
-      AI Assistant
-    </h1>
+    <div>
 
-    <p>
-      MEAN + Ollama + RAG
-    </p>
+      <h1>
+        AI Assistant
+      </h1>
+
+      <p>
+        MEAN + LLM (Ollama) + RAG
+      </p>
+
+    </div>
 
   </header>
 
 
+  <!-- ============================================================
+       MESSAGES
+       ============================================================ -->
+
   <main class="messages">
+
+    <!-- ==========================================================
+         EMPTY STATE
+         ========================================================== -->
 
     @if (messages.length === 0) {
 
@@ -32,7 +48,14 @@
     }
 
 
-    @for (msg of messages; track $index) {
+    <!-- ==========================================================
+         MESSAGE LIST
+         ========================================================== -->
+
+    @for (
+      msg of messages;
+      track $index
+    ) {
 
       <div
         class="message"
@@ -40,25 +63,70 @@
         [class.assistant]="msg.role === 'assistant'"
       >
 
+
+        <!-- ======================================================
+             ROLE
+             ====================================================== -->
+
         <div class="role">
 
           @if (msg.role === 'user') {
+
             You
+
           } @else {
+
             AI Assistant
+
           }
 
         </div>
 
 
+        <!-- ======================================================
+             MESSAGE CONTENT
+             ====================================================== -->
+
         <div class="content">
 
-          {{ msg.content }}
+          <!-- ----------------------------------------------------
+               ANSWER TEXT
+               ---------------------------------------------------- -->
+
+          @if (msg.content) {
+
+            <span class="message-text">
+              {{ msg.content }}
+            </span>
+
+          }
+
+
+          <!-- ----------------------------------------------------
+               THINKING
+               ---------------------------------------------------- -->
 
           @if (
             msg.role === 'assistant' &&
-            loading &&
-            $index === messages.length - 1
+            msg.processing &&
+            !msg.content
+          ) {
+
+            <span class="thinking">
+              Thinking...
+            </span>
+
+          }
+
+
+          <!-- ----------------------------------------------------
+               STREAMING CURSOR
+               ---------------------------------------------------- -->
+
+          @if (
+            msg.role === 'assistant' &&
+            msg.processing &&
+            msg.content
           ) {
 
             <span class="cursor">
@@ -69,6 +137,137 @@
 
         </div>
 
+
+        <!-- ======================================================
+             RAG PIPELINE
+             ====================================================== -->
+
+        @if (
+          msg.role === 'assistant' &&
+          msg.pipeline
+        ) {
+
+          <div class="pipeline">
+
+
+            <!-- --------------------------------------------------
+                 PIPELINE HEADER
+                 -------------------------------------------------- -->
+
+            <div class="pipeline-header">
+
+              <span>
+                Processing
+              </span>
+
+
+              @if (msg.processing) {
+
+                <span class="live">
+                  LIVE
+                </span>
+
+              } @else {
+
+                <span class="completed-label">
+                  COMPLETE
+                </span>
+
+              }
+
+            </div>
+
+
+            <!-- --------------------------------------------------
+                 PIPELINE STEPS
+                 -------------------------------------------------- -->
+
+            @for (
+              step of msg.pipeline;
+              track $index
+            ) {
+
+              <div
+                class="pipeline-step"
+
+                [class.active]="
+                  step.state === 'active'
+                "
+
+                [class.completed]="
+                  step.state === 'completed'
+                "
+              >
+
+
+                <!-- Step icon -->
+
+                <span class="step-icon">
+
+                  @if (
+                    step.state === 'completed'
+                  ) {
+
+                    ✓
+
+                  } @else if (
+                    step.state === 'active'
+                  ) {
+
+                    <span class="spinner">
+                      ⟳
+                    </span>
+
+                  } @else {
+
+                    ○
+
+                  }
+
+                </span>
+
+
+                <!-- Step label -->
+
+                <span class="step-label">
+                  {{ step.label }}
+                </span>
+
+              </div>
+
+            }
+
+          </div>
+
+        }
+
+
+        <!-- ======================================================
+             CURRENT STATUS
+             ====================================================== -->
+
+        @if (
+          msg.role === 'assistant' &&
+          msg.processing &&
+          msg.status
+        ) {
+
+          <div class="status">
+
+            <span class="status-dot"></span>
+
+            <span>
+              {{ msg.status }}
+            </span>
+
+          </div>
+
+        }
+
+
+        <!-- ======================================================
+             SOURCES
+             ====================================================== -->
 
         @if (
           msg.sources &&
@@ -89,27 +288,40 @@
 
               <div class="source">
 
-                <strong>
-                  {{ source.filename }}
-                </strong>
+
+                <!-- ----------------------------------------------
+                     SOURCE HEADER
+                     ---------------------------------------------- -->
+
+                <div class="source-header">
+
+                  <strong>
+                    {{ source.filename }}
+                  </strong>
 
 
-                @if (
-                  source.score !== undefined
-                ) {
+                  @if (
+                    source.score !== undefined
+                  ) {
 
-                  <small>
+                    <small>
 
-                    Similarity:
-                    {{
-                      source.score
-                        | number:'1.2-4'
-                    }}
+                      Similarity:
+                      {{
+                        source.score
+                          | number:'1.2-4'
+                      }}
 
-                  </small>
+                    </small>
 
-                }
+                  }
 
+                </div>
+
+
+                <!-- ----------------------------------------------
+                     SOURCE CONTENT
+                     ---------------------------------------------- -->
 
                 <p>
                   {{ source.content }}
@@ -130,34 +342,57 @@
   </main>
 
 
+  <!-- ============================================================
+       COMPOSER
+       ============================================================ -->
+
   <form
     class="composer"
     (ngSubmit)="send()"
   >
 
+
+    <!-- ==========================================================
+         MESSAGE INPUT
+         ========================================================== -->
+
     <textarea
       name="message"
+
       [(ngModel)]="message"
+
       placeholder="Ask a question..."
+
       rows="3"
+
       [disabled]="loading"
+
       (keydown.enter)="handleEnter($event)"
     ></textarea>
 
 
+    <!-- ==========================================================
+         SEND BUTTON
+         ========================================================== -->
+
     <button
       type="submit"
+
       [disabled]="
         loading ||
         !message.trim()
       "
     >
 
-      {{
-        loading
-          ? 'Thinking...'
-          : 'Send'
-      }}
+      @if (loading) {
+
+        Thinking...
+
+      } @else {
+
+        Send
+
+      }
 
     </button>
 

@@ -1,76 +1,131 @@
-import { Injectable } from '@angular/core';
+import {
+  Injectable
+} from '@angular/core';
 
 import {
   ChatSource
 } from '../models/chat.models';
+
 
 @Injectable({
   providedIn: 'root'
 })
 export class ChatService {
 
+
   private readonly apiUrl =
     'http://localhost:3000/api';
 
+
   async streamChat(
+
     message: string,
 
-    onToken: (
-      token: string
-    ) => void,
+    onToken:
+      (token: string) => void,
 
-    onSources: (
-      sources: ChatSource[]
-    ) => void
+    onSources:
+      (sources: ChatSource[]) => void,
+
+    onStatus:
+      (status: string) => void
+
   ): Promise<void> {
+
 
     const response =
       await fetch(
+
         `${this.apiUrl}/chat/stream`,
+
         {
+
           method: 'POST',
 
           headers: {
+
             'Content-Type':
-              'application/json'
+              'application/json',
+
+            'Accept':
+              'text/event-stream'
+
           },
 
           body: JSON.stringify({
+
             message
+
           })
+
         }
+
       );
 
-    if (!response.ok) {
+
+    console.log(
+      'Chat response:',
+      response.status,
+      response.headers.get(
+        'content-type'
+      )
+    );
+
+
+    if (
+      !response.ok
+    ) {
+
+      const errorText =
+        await response.text();
+
+
       throw new Error(
-        'Chat request failed'
+        `Chat request failed: ` +
+        `${response.status} ` +
+        `${errorText}`
       );
+
     }
 
-    if (!response.body) {
+
+    if (
+      !response.body
+    ) {
+
       throw new Error(
-        'Streaming is not supported'
+        'Streaming is not supported by this browser.'
       );
+
     }
+
 
     const reader =
       response.body.getReader();
 
+
     const decoder =
       new TextDecoder();
 
+
     let buffer = '';
+
 
     while (true) {
 
       const {
         done,
         value
-      } = await reader.read();
+      } =
+        await reader.read();
+
 
       if (done) {
+
         break;
+
       }
+
 
       buffer +=
         decoder.decode(
@@ -80,66 +135,264 @@ export class ChatService {
           }
         );
 
+
       const events =
         buffer.split('\n\n');
 
+
       buffer =
-        events.pop() ?? '';
+        events.pop() ??
+        '';
+
 
       for (
         const event of events
       ) {
 
-        const line =
-          event
-            .split('\n')
-            .find(
-              line =>
-                line.startsWith('data:')
-            );
+        this.processSseEvent(
 
-        if (!line) {
-          continue;
-        }
+          event,
 
-        const json =
-          line.replace(
-            /^data:\s*/,
-            ''
+          onToken,
+
+          onSources,
+
+          onStatus
+
+        );
+
+      }
+
+    }
+
+
+    /*
+     * Process final event.
+     */
+
+    if (
+      buffer.trim()
+    ) {
+
+      this.processSseEvent(
+
+        buffer,
+
+        onToken,
+
+        onSources,
+
+        onStatus
+
+      );
+
+    }
+
+
+    console.log(
+      'Chat stream finished.'
+    );
+
+  }
+
+
+  private processSseEvent(
+
+    event: string,
+
+    onToken:
+      (token: string) => void,
+
+    onSources:
+      (sources: ChatSource[]) => void,
+
+    onStatus:
+      (status: string) => void
+
+  ): void {
+
+
+    const lines =
+      event.split('\n');
+
+
+    const dataLine =
+      lines.find(
+        line =>
+          line.startsWith(
+            'data:'
+          )
+      );
+
+
+    if (
+      !dataLine
+    ) {
+
+      return;
+
+    }
+
+
+    const json =
+      dataLine.replace(
+        /^data:\s*/,
+        ''
+      );
+
+
+    if (
+      !json.trim()
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      const data =
+        JSON.parse(json);
+
+
+      console.log(
+        'SSE event:',
+        data
+      );
+
+
+      switch (
+        data.type
+      ) {
+
+
+        /*
+         * STATUS
+         */
+
+        case 'status':
+
+          console.log(
+            'STATUS:',
+            data.value
           );
 
-        const data =
-          JSON.parse(json);
 
-        switch (data.type) {
+          if (
+            typeof data.value ===
+            'string'
+          ) {
 
-          case 'token':
+            onStatus(
+              data.value
+            );
+
+          }
+
+          break;
+
+
+        /*
+         * TOKEN
+         */
+
+        case 'token':
+
+          console.log(
+            'TOKEN RECEIVED:',
+            data.value
+          );
+
+
+          if (
+            typeof data.value ===
+            'string'
+          ) {
 
             onToken(
               data.value
             );
 
-            break;
+          }
 
-          case 'sources':
+          break;
 
-            onSources(
+
+        /*
+         * SOURCES
+         */
+
+        case 'sources':
+
+          console.log(
+            'SOURCES RECEIVED:',
+            data.sources
+          );
+
+
+          onSources(
+
+            Array.isArray(
               data.sources
-            );
+            )
+              ? data.sources
+              : []
 
-            break;
+          );
 
-          case 'error':
+          break;
 
-            throw new Error(
-              data.message
-            );
 
-          case 'done':
+        /*
+         * DONE
+         */
 
-            break;
-        }
+        case 'done':
+
+          console.log(
+            'STREAM DONE'
+          );
+
+          break;
+
+
+        /*
+         * ERROR
+         */
+
+        case 'error':
+
+          throw new Error(
+            data.value ??
+            data.message ??
+            'Chat failed'
+          );
+
+
+        default:
+
+          console.warn(
+            'Unknown SSE event:',
+            data
+          );
+
       }
+
+
+    } catch (error) {
+
+      console.error(
+        'Failed to process SSE event:',
+        json,
+        error
+      );
+
+
+      throw error;
+
     }
+
   }
+
 }

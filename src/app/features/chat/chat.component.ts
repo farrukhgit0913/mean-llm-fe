@@ -21,6 +21,18 @@ import {
 } from '../../core/models/chat.models';
 
 
+interface PipelineStep {
+
+  label: string;
+
+  state:
+    | 'pending'
+    | 'active'
+    | 'completed';
+
+}
+
+
 interface Message {
 
   role:
@@ -30,6 +42,12 @@ interface Message {
   content: string;
 
   sources?: ChatSource[];
+
+  processing?: boolean;
+
+  status?: string;
+
+  pipeline?: PipelineStep[];
 
 }
 
@@ -66,6 +84,12 @@ export class ChatComponent {
   messages: Message[] = [];
 
 
+  /*
+   * ============================================================
+   * SEND
+   * ============================================================
+   */
+
   async send(): Promise<void> {
 
     const question =
@@ -76,47 +100,128 @@ export class ChatComponent {
       !question ||
       this.loading
     ) {
+
       return;
+
     }
 
 
-    console.log(
-      'USER QUESTION:',
-      question
-    );
+    /*
+     * ----------------------------------------------------------
+     * USER MESSAGE
+     * ----------------------------------------------------------
+     */
 
-
-    // Add user message
     this.messages = [
+
       ...this.messages,
+
       {
         role: 'user',
         content: question
       }
+
     ];
 
 
-    // Clear input
-    this.message = '';
+    /*
+     * ----------------------------------------------------------
+     * ASSISTANT MESSAGE
+     * ----------------------------------------------------------
+     */
+
+    const pipeline:
+      PipelineStep[] = [
+
+        {
+          label:
+            'Create query embedding',
+
+          state:
+            'pending'
+        },
+
+        {
+          label:
+            'Search MongoDB knowledge base',
+
+          state:
+            'pending'
+        },
+
+        {
+          label:
+            'Retrieve relevant context',
+
+          state:
+            'pending'
+        },
+
+        {
+          label:
+            'Send context to Llama 3.2',
+
+          state:
+            'pending'
+        },
+
+        {
+          label:
+            'Generate answer',
+
+          state:
+            'pending'
+        }
+
+      ];
 
 
-    // Create assistant message
-    const assistantMessage: Message = {
-      role: 'assistant',
-      content: ''
-    };
+    const assistant:
+      Message = {
+
+        role:
+          'assistant',
+
+        content:
+          '',
+
+        processing:
+          true,
+
+        status:
+          'Starting RAG pipeline...',
+
+        pipeline
+
+      };
 
 
     this.messages = [
+
       ...this.messages,
-      assistantMessage
+
+      assistant
+
     ];
 
+
+    /*
+     * ----------------------------------------------------------
+     * IMPORTANT:
+     *
+     * Keep the assistant INDEX.
+     * ----------------------------------------------------------
+     */
+
+    const assistantIndex =
+      this.messages.length - 1;
+
+
+    this.message = '';
 
     this.loading = true;
 
 
-    // Immediately update UI
     this.cdr.detectChanges();
 
 
@@ -127,65 +232,277 @@ export class ChatComponent {
         question,
 
 
-        // =========================
-        // TOKEN
-        // =========================
+        /*
+         * ======================================================
+         * TOKEN
+         * ======================================================
+         */
+
         (token: string) => {
 
           console.log(
-            'TOKEN FOR UI:',
-            token
+            'UI TOKEN:',
+            JSON.stringify(token)
           );
 
 
-          assistantMessage.content +=
-            token;
+          const current =
+            this.messages[
+              assistantIndex
+            ];
 
 
-          console.log(
-            'CURRENT CONTENT:',
-            assistantMessage.content
-          );
+          if (!current) {
+
+            return;
+
+          }
 
 
-          // Update array
+          const updated:
+            Message = {
+
+              ...current,
+
+              content:
+                current.content + token,
+
+              processing:
+                true
+
+            };
+
+
           this.messages = [
-            ...this.messages
+
+            ...this.messages.slice(
+              0,
+              assistantIndex
+            ),
+
+            updated,
+
+            ...this.messages.slice(
+              assistantIndex + 1
+            )
+
           ];
 
 
-          // FORCE ANGULAR UI UPDATE
           this.cdr.detectChanges();
 
         },
 
 
-        // =========================
-        // SOURCES
-        // =========================
+        /*
+         * ======================================================
+         * SOURCES
+         * ======================================================
+         */
+
         (sources: ChatSource[]) => {
 
           console.log(
-            'SOURCES FOR UI:',
+            'UI SOURCES:',
             sources
           );
 
 
-          assistantMessage.sources =
-            sources;
+          const current =
+            this.messages[
+              assistantIndex
+            ];
+
+
+          if (!current) {
+
+            return;
+
+          }
+
+
+          const updated:
+            Message = {
+
+              ...current,
+
+              sources
+
+            };
 
 
           this.messages = [
-            ...this.messages
+
+            ...this.messages.slice(
+              0,
+              assistantIndex
+            ),
+
+            updated,
+
+            ...this.messages.slice(
+              assistantIndex + 1
+            )
+
           ];
 
 
-          // FORCE ANGULAR UI UPDATE
+          this.cdr.detectChanges();
+
+        },
+
+
+        /*
+         * ======================================================
+         * STATUS
+         * ======================================================
+         */
+
+        (status: string) => {
+
+          console.log(
+            'UI STATUS:',
+            status
+          );
+
+
+          const current =
+            this.messages[
+              assistantIndex
+            ];
+
+
+          if (!current) {
+
+            return;
+
+          }
+
+
+          const updatedPipeline:
+            PipelineStep[] =
+              current.pipeline
+                ? current.pipeline.map(
+                    (
+                      step
+                    ): PipelineStep => ({
+                      ...step
+                    })
+                  )
+                : [];
+
+
+          this.updatePipeline(
+            updatedPipeline,
+            status
+          );
+
+
+          const updated:
+            Message = {
+
+              ...current,
+
+              status,
+
+              pipeline:
+                updatedPipeline
+
+            };
+
+
+          this.messages = [
+
+            ...this.messages.slice(
+              0,
+              assistantIndex
+            ),
+
+            updated,
+
+            ...this.messages.slice(
+              assistantIndex + 1
+            )
+
+          ];
+
+
           this.cdr.detectChanges();
 
         }
 
       );
+
+
+      /*
+       * ======================================================
+       * COMPLETED
+       * ======================================================
+       */
+
+      const current =
+        this.messages[
+          assistantIndex
+        ];
+
+
+      if (current) {
+
+        const completedPipeline:
+          PipelineStep[] =
+            current.pipeline
+              ? current.pipeline.map(
+                  (
+                    step
+                  ): PipelineStep => ({
+
+                    ...step,
+
+                    state:
+                      'completed'
+
+                  })
+                )
+              : [];
+
+
+        const completed:
+          Message = {
+
+            ...current,
+
+            processing:
+              false,
+
+            status:
+              'Answer generated successfully',
+
+            pipeline:
+              completedPipeline
+
+          };
+
+
+        this.messages = [
+
+          ...this.messages.slice(
+            0,
+            assistantIndex
+          ),
+
+          completed,
+
+          ...this.messages.slice(
+            assistantIndex + 1
+          )
+
+        ];
+
+      }
+
+
+      this.cdr.detectChanges();
+
 
     } catch (error) {
 
@@ -195,13 +512,69 @@ export class ChatComponent {
       );
 
 
-      assistantMessage.content =
-        'Sorry, something went wrong while processing your request.';
+      const current =
+        this.messages[
+          assistantIndex
+        ];
 
 
-      this.messages = [
-        ...this.messages
-      ];
+      if (current) {
+
+        const failedPipeline:
+          PipelineStep[] =
+            current.pipeline
+              ? current.pipeline.map(
+                  (
+                    step
+                  ): PipelineStep => ({
+
+                    ...step,
+
+                    state:
+                      'pending'
+
+                  })
+                )
+              : [];
+
+
+        const failed:
+          Message = {
+
+            ...current,
+
+            content:
+              current.content ||
+              'Sorry, something went wrong while processing your request.',
+
+            processing:
+              false,
+
+            status:
+              'Pipeline failed',
+
+            pipeline:
+              failedPipeline
+
+          };
+
+
+        this.messages = [
+
+          ...this.messages.slice(
+            0,
+            assistantIndex
+          ),
+
+          failed,
+
+          ...this.messages.slice(
+            assistantIndex + 1
+          )
+
+        ];
+
+      }
 
 
       this.cdr.detectChanges();
@@ -210,18 +583,337 @@ export class ChatComponent {
 
       this.loading = false;
 
-
-      this.messages = [
-        ...this.messages
-      ];
-
-
       this.cdr.detectChanges();
 
     }
 
   }
 
+
+  /*
+   * ============================================================
+   * PIPELINE
+   * ============================================================
+   */
+
+  private updatePipeline(
+    pipeline: PipelineStep[],
+    status: string
+  ): void {
+
+    const text =
+      status.toLowerCase();
+
+
+    /*
+     * Create embedding
+     */
+
+    if (
+      text.includes(
+        'creating query embedding'
+      )
+    ) {
+
+      this.setActive(
+        pipeline,
+        0
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * Search MongoDB
+     */
+
+    if (
+      text.includes(
+        'searching knowledge base'
+      )
+    ) {
+
+      this.completeThrough(
+        pipeline,
+        0
+      );
+
+      this.setActive(
+        pipeline,
+        1
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * Relevant documents
+     */
+
+    if (
+      text.includes(
+        'found'
+      ) &&
+      text.includes(
+        'relevant document'
+      )
+    ) {
+
+      this.completeThrough(
+        pipeline,
+        1
+      );
+
+      this.setActive(
+        pipeline,
+        2
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * No relevant knowledge
+     */
+
+    if (
+      text.includes(
+        'no relevant knowledge'
+      )
+    ) {
+
+      this.completeThrough(
+        pipeline,
+        1
+      );
+
+      this.setActive(
+        pipeline,
+        2
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * General knowledge
+     */
+
+    if (
+      text.includes(
+        'general knowledge'
+      )
+    ) {
+
+      this.completeThrough(
+        pipeline,
+        2
+      );
+
+      this.setActive(
+        pipeline,
+        3
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * Context added
+     */
+
+    if (
+      text.includes(
+        'context added'
+      )
+    ) {
+
+      this.completeThrough(
+        pipeline,
+        2
+      );
+
+      this.setActive(
+        pipeline,
+        3
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * Sending request
+     */
+
+    if (
+      text.includes(
+        'sending request'
+      )
+    ) {
+
+      this.completeThrough(
+        pipeline,
+        2
+      );
+
+      this.setActive(
+        pipeline,
+        3
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * Generating answer
+     */
+
+    if (
+      text.includes(
+        'generating the answer'
+      )
+    ) {
+
+      this.completeThrough(
+        pipeline,
+        3
+      );
+
+      this.setActive(
+        pipeline,
+        4
+      );
+
+      return;
+
+    }
+
+
+    /*
+     * Completed
+     */
+
+    if (
+      text.includes(
+        'answer generated'
+      )
+    ) {
+
+      pipeline.forEach(
+        (
+          step
+        ): void => {
+
+          step.state =
+            'completed';
+
+        }
+      );
+
+    }
+
+  }
+
+
+  /*
+   * ============================================================
+   * SET ACTIVE
+   * ============================================================
+   */
+
+  private setActive(
+    pipeline: PipelineStep[],
+    index: number
+  ): void {
+
+    pipeline.forEach(
+      (
+        step,
+        i
+      ): void => {
+
+        if (
+          i < index
+        ) {
+
+          step.state =
+            'completed';
+
+        }
+
+        else if (
+          i === index
+        ) {
+
+          step.state =
+            'active';
+
+        }
+
+        else {
+
+          step.state =
+            'pending';
+
+        }
+
+      }
+    );
+
+  }
+
+
+  /*
+   * ============================================================
+   * COMPLETE THROUGH
+   * ============================================================
+   */
+
+  private completeThrough(
+    pipeline: PipelineStep[],
+    index: number
+  ): void {
+
+    pipeline.forEach(
+      (
+        step,
+        i
+      ): void => {
+
+        if (
+          i <= index
+        ) {
+
+          step.state =
+            'completed';
+
+        }
+
+      }
+    );
+
+  }
+
+
+  /*
+   * ============================================================
+   * ENTER
+   * ============================================================
+   */
 
   handleEnter(
     event: Event
@@ -231,16 +923,16 @@ export class ChatComponent {
       event as KeyboardEvent;
 
 
-    // Shift + Enter = new line
     if (
       keyboardEvent.shiftKey
     ) {
+
       return;
+
     }
 
 
     event.preventDefault();
-
 
     void this.send();
 
