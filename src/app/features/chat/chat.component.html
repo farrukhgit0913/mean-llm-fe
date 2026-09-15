@@ -1,0 +1,176 @@
+<div class="chat">
+
+  <header class="chat-header">
+
+    <h1>
+      AI Assistant
+    </h1>
+
+    <p>
+      MEAN + OpenAI + RAG
+    </p>
+
+  </header>
+
+
+  <main class="messages">
+
+    @if (messages.length === 0) {
+
+      <div class="empty-state">
+
+        <h2>
+          How can I help?
+        </h2>
+
+        <p>
+          Ask a question about your
+          knowledge base.
+        </p>
+
+      </div>
+    }
+
+
+    @for (
+      message of messages;
+      track $index
+    ) {
+
+      <div
+        class="message"
+        [class.user]="
+          message.role === 'user'
+        "
+        [class.assistant]="
+          message.role === 'assistant'
+        "
+      >
+
+        <div class="role">
+
+          {{
+            message.role === 'user'
+              ? 'You'
+              : 'AI Assistant'
+          }}
+
+        </div>
+
+
+        <div class="content">
+
+          {{ message.content }}
+
+          @if (
+            message.role === 'assistant' &&
+            loading &&
+            $index === messages.length - 1
+          ) {
+
+            <span class="cursor">
+              ▋
+            </span>
+
+          }
+
+        </div>
+
+
+        @if (
+          message.sources &&
+          message.sources.length > 0
+        ) {
+
+          <div class="sources">
+
+            <h4>
+              Sources
+            </h4>
+
+            @for (
+              source of message.sources;
+              track $index
+            ) {
+
+              <div class="source">
+
+                <strong>
+                  {{ source.filename }}
+                </strong>
+
+                @if (
+                  source.score !== undefined
+                ) {
+
+                  <small>
+                    Similarity:
+                    {{
+                      source.score
+                        | number:'1.2-4'
+                    }}
+                  </small>
+
+                }
+
+                <p>
+                  {{ source.content }}
+                </p>
+
+              </div>
+
+            }
+
+          </div>
+
+        }
+
+      </div>
+
+    }
+
+  </main>
+
+
+  <form
+    class="composer"
+    (ngSubmit)="send()"
+  >
+
+    <textarea
+      name="message"
+
+      [(ngModel)]="message"
+
+      placeholder="Ask a question..."
+
+      rows="3"
+
+      [disabled]="loading"
+
+      (keydown.enter)="$event.shiftKey
+        ? null
+        : ($event.preventDefault(), send())"
+    ></textarea>
+
+
+    <button
+      type="submit"
+
+      [disabled]="
+        loading ||
+        !message.trim()
+      "
+    >
+
+      {{
+        loading
+          ? 'Thinking...'
+          : 'Send'
+      }}
+
+    </button>
+
+  </form>
+
+</div>
