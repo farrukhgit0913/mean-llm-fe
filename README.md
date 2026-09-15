@@ -1,60 +1,177 @@
-# Frontend
+# mean-llm-fe
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.6.
+Frontend for an **AI Assistant built with Angular, Ollama LLM, and RAG (Retrieval-Augmented Generation)**.
 
-## Development server
+The application provides a modern chat interface for interacting with the AI backend and displaying AI responses, RAG context, sources, and processing status.
 
-To start a local development server, run:
+## 🚀 Tech Stack
+
+* **Angular**
+* **TypeScript**
+* **HTML5**
+* **CSS3**
+* **REST API**
+* **Ollama LLM**
+* **RAG (Retrieval-Augmented Generation)**
+
+## ✨ Features
+
+* Modern AI chat interface
+* Real-time conversational experience
+* AI response streaming support
+* RAG pipeline status display
+* Retrieved source/context display
+* Responsive UI
+* Clean and minimal chat experience
+* Integration with the MEAN + LLM backend
+
+## 🏗️ Architecture
+
+```text
+Angular Frontend
+       │
+       │ HTTP / API
+       ▼
+Node.js + Express Backend
+       │
+       ├── RAG
+       │
+       └── Ollama LLM
+```
+
+## 📋 Prerequisites
+
+Make sure you have:
+
+* Node.js
+* npm
+* Angular CLI
+
+Check Node.js:
+
+```bash
+node -v
+npm -v
+```
+
+Check Angular CLI:
+
+```bash
+ng version
+```
+
+## 📦 Installation
+
+Clone the repository:
+
+```bash
+git clone <FRONTEND_REPOSITORY_URL>
+```
+
+Go to the frontend directory:
+
+```bash
+cd mean-llm-fe
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+## ⚙️ Backend Configuration
+
+Configure the backend API URL according to your environment.
+
+For example:
+
+```typescript
+apiUrl = 'http://localhost:3000';
+```
+
+For production, use the appropriate production API URL.
+
+## ▶️ Run the Application
+
+Start the Angular development server:
 
 ```bash
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Or:
 
 ```bash
-ng generate component component-name
+npm start
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+The application will be available at:
 
-```bash
-ng generate --help
+```text
+http://localhost:4200
 ```
 
-## Building
+## 🧠 AI Chat Flow
 
-To build the project run:
+```text
+User
+ │
+ ▼
+Angular Chat UI
+ │
+ ▼
+Backend API
+ │
+ ▼
+RAG Retrieval
+ │
+ ▼
+Ollama LLM
+ │
+ ▼
+AI Response
+ │
+ ▼
+Angular Chat UI
+```
+
+## 📁 Project Structure
+
+```text
+mean-llm-fe/
+│
+├── src/
+│   ├── app/
+│   │   ├── components/
+│   │   ├── services/
+│   │   └── ...
+│   │
+│   ├── assets/
+│   └── environments/
+│
+├── angular.json
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+## 🏗️ Build
+
+Create a production build:
 
 ```bash
 ng build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+The generated files will be available in the `dist/` directory.
 
-## Running unit tests
+## 🔗 Related Project
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Backend:
 
-```bash
-ng test
-```
+**mean-llm-be** — Node.js/Express backend providing the AI, RAG, and Ollama integration.
 
-## Running end-to-end tests
+## 📄 License
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-# mean-llm-fe
+This project is for learning and development purposes.
